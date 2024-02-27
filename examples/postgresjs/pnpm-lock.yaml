@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -8,8 +12,8 @@ importers:
         specifier: ^16.0.3
         version: 16.0.3
       drizzle-orm:
-        specifier: ^0.23.4
-        version: 0.23.4(postgres@3.3.4)
+        specifier: workspace:./drizzle-orm/dist
+        version: link:drizzle-orm/dist
       postgres:
         specifier: ^3.3.3
         version: 3.3.4
@@ -364,65 +368,6 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
-
-  /drizzle-orm@0.23.4(postgres@3.3.4):
-    resolution: {integrity: sha512-fNTZPKQMWbE0Qy907GgBw/DJazGOBx+jHi1/0iaX8NVq7VvXt8w7ENOzh5LKpe/ld0I3f8M5x+oB8OXM7/d7eQ==}
-    peerDependencies:
-      '@aws-sdk/client-rds-data': '>=3'
-      '@cloudflare/workers-types': '>=3'
-      '@libsql/client': '*'
-      '@neondatabase/serverless': '>=0.1'
-      '@planetscale/database': '>=1'
-      '@types/better-sqlite3': '*'
-      '@types/pg': '*'
-      '@types/sql.js': '*'
-      better-sqlite3: '>=7'
-      bun-types: '*'
-      knex: '*'
-      kysely: '*'
-      mysql2: '>=2'
-      pg: '>=8'
-      postgres: '>=3'
-      sql.js: '>=1'
-      sqlite3: '>=5'
-    peerDependenciesMeta:
-      '@aws-sdk/client-rds-data':
-        optional: true
-      '@cloudflare/workers-types':
-        optional: true
-      '@libsql/client':
-        optional: true
-      '@neondatabase/serverless':
-        optional: true
-      '@planetscale/database':
-        optional: true
-      '@types/better-sqlite3':
-        optional: true
-      '@types/pg':
-        optional: true
-      '@types/sql.js':
-        optional: true
-      better-sqlite3:
-        optional: true
-      bun-types:
-        optional: true
-      knex:
-        optional: true
-      kysely:
-        optional: true
-      mysql2:
-        optional: true
-      pg:
-        optional: true
-      postgres:
-        optional: true
-      sql.js:
-        optional: true
-      sqlite3:
-        optional: true
-    dependencies:
-      postgres: 3.3.4
-    dev: false
 
   /es5-ext@0.10.62:
     resolution: {integrity: sha512-BHLqn0klhEpnOKSrzn/Xsz2UIW8j+cGmo9JLzr8BiUapV8hPL9+FliFqjwr9ngW7jWdnxv6eO+/LqyhJVqgrjA==}

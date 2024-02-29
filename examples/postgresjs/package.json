@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "test": "pnpx jest",
     "generate": "drizzle-kit generate:pg"
   },
   "keywords": [],
@@ -16,8 +17,11 @@
     "postgres": "^3.3.3"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/node": "^18.15.11",
     "drizzle-kit": "0.17.1-609a4f0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
     "tsx": "^3.12.6",
     "typescript": "^5.0.3"
   }

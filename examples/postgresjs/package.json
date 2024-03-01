@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.0.3",
-    "drizzle-orm": "^0.23.4",
+    "drizzle-orm": "workspace:./drizzle-orm/dist",
     "postgres": "^3.3.3"
   },
   "devDependencies": {

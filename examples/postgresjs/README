@@ -1,0 +1,36 @@
+## Development
+
+### Setup
+
+To setup dependencies needed, you first need to run
+
+```
+pnpm install
+```
+
+Then you will need to run the development postgres DB
+
+```
+docker run --name my_postgress_2 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=adminadmin -e POSTGRES_DB=pgtest -d -p 5432:5432 postgres
+```
+
+#### Running the code
+
+Run dev using ts-node
+
+```
+pnpm run dev:ts-node
+```
+
+### Testing the db
+
+Run tests
+
+```
+pnpm run test
+```
+
+### Issues
+
+1. There's a dispartiy between the old postgres version used and the one used in Drizzle-orm, so I have to set the postgress version explicitly
+2. Postgress have to be imported like this `import * as postgres from "postgres"`, importing withoout `* as` results in `function not found error`

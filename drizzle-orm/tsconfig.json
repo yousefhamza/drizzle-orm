@@ -9,5 +9,13 @@
 		"outDir": "dist",
 		"noEmit": true
 	},
-	"include": ["src", "scripts"]
+	"include": ["src", "scripts"],
+	"exclude": [
+		"src/aws-data-api",
+		"src/neon-http",
+		"src/neon-serverless",
+		"src/node-postgres",
+		"src/pg-proxy",
+		"src/vercel-postgres"
+	]
 }

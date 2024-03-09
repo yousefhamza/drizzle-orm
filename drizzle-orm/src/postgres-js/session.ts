@@ -1,19 +1,30 @@
-import type { Row, RowList, Sql, TransactionSql } from 'postgres';
-import { entityKind } from '~/entity.ts';
-import type { Logger } from '~/logger.ts';
-import { NoopLogger } from '~/logger.ts';
-import type { PgDialect } from '~/pg-core/dialect.ts';
-import { PgTransaction } from '~/pg-core/index.ts';
-import type { SelectedFieldsOrdered } from '~/pg-core/query-builders/select.types.ts';
-import type { PgTransactionConfig, PreparedQueryConfig, QueryResultHKT } from '~/pg-core/session.ts';
-import { PgPreparedQuery, PgSession } from '~/pg-core/session.ts';
-import type { RelationalSchemaConfig, TablesRelationalConfig } from '~/relations.ts';
-import { fillPlaceholders, type Query } from '~/sql/sql.ts';
-import { tracer } from '~/tracing.ts';
-import { type Assume, mapResultRow } from '~/utils.ts';
+import { rejects } from "assert";
+import { resolve } from "dns";
+import type { Row, RowList, Sql, TransactionSql } from "postgres";
+import { entityKind } from "~/entity.ts";
+import type { Logger } from "~/logger.ts";
+import { NoopLogger } from "~/logger.ts";
+import type { PgDialect } from "~/pg-core/dialect.ts";
+import { PgTransaction } from "~/pg-core/index.ts";
+import type { SelectedFieldsOrdered } from "~/pg-core/query-builders/select.types.ts";
+import type {
+	PgTransactionConfig,
+	PreparedQueryConfig,
+	QueryResultHKT,
+} from "~/pg-core/session.ts";
+import { PgPreparedQuery, PgSession } from "~/pg-core/session.ts";
+import type {
+	RelationalSchemaConfig,
+	TablesRelationalConfig,
+} from "~/relations.ts";
+import { fillPlaceholders, type Query } from "~/sql/sql.ts";
+import { tracer } from "~/tracing.ts";
+import { type Assume, mapResultRow } from "~/utils.ts";
 
-export class PostgresJsPreparedQuery<T extends PreparedQueryConfig> extends PgPreparedQuery<T> {
-	static readonly [entityKind]: string = 'PostgresJsPreparedQuery';
+export class PostgresJsPreparedQuery<
+	T extends PreparedQueryConfig,
+> extends PgPreparedQuery<T> {
+	static readonly [entityKind]: string = "PostgresJsPreparedQuery";
 
 	constructor(
 		private client: Sql,
@@ -21,58 +32,77 @@ export class PostgresJsPreparedQuery<T extends PreparedQueryConfig> extends PgPr
 		private params: unknown[],
 		private logger: Logger,
 		private fields: SelectedFieldsOrdered | undefined,
-		private customResultMapper?: (rows: unknown[][]) => T['execute'],
+		private customResultMapper?: (rows: unknown[][]) => T["execute"]
 	) {
 		super({ sql: queryString, params });
 	}
 
-	async execute(placeholderValues: Record<string, unknown> | undefined = {}): Promise<T['execute']> {
-		return tracer.startActiveSpan('drizzle.execute', async (span) => {
+	async execute(
+		placeholderValues: Record<string, unknown> | undefined = {}
+	): Promise<T["execute"]> {
+		return tracer.startActiveSpan("drizzle.execute", async (span) => {
 			const params = fillPlaceholders(this.params, placeholderValues);
 
 			span?.setAttributes({
-				'drizzle.query.text': this.queryString,
-				'drizzle.query.params': JSON.stringify(params),
+				"drizzle.query.text": this.queryString,
+				"drizzle.query.params": JSON.stringify(params),
 			});
 
 			this.logger.logQuery(this.queryString, params);
 
-			const { fields, queryString: query, client, joinsNotNullableMap, customResultMapper } = this;
+			const {
+				fields,
+				queryString: query,
+				client,
+				joinsNotNullableMap,
+				customResultMapper,
+			} = this;
 			if (!fields && !customResultMapper) {
-				return tracer.startActiveSpan('drizzle.driver.execute', () => {
+				return tracer.startActiveSpan("drizzle.driver.execute", () => {
 					return client.unsafe(query, params as any[]);
 				});
 			}
 
-			const rows = await tracer.startActiveSpan('drizzle.driver.execute', () => {
-				span?.setAttributes({
-					'drizzle.query.text': query,
-					'drizzle.query.params': JSON.stringify(params),
-				});
+			const rows = await tracer.startActiveSpan(
+				"drizzle.driver.execute",
+				() => {
+					span?.setAttributes({
+						"drizzle.query.text": query,
+						"drizzle.query.params": JSON.stringify(params),
+					});
 
-				return client.unsafe(query, params as any[]).values();
-			});
+					return client.unsafe(query, params as any[]).values();
+				}
+			);
 
-			return tracer.startActiveSpan('drizzle.mapResponse', () => {
+			return tracer.startActiveSpan("drizzle.mapResponse", () => {
 				return customResultMapper
 					? customResultMapper(rows)
-					: rows.map((row) => mapResultRow<T['execute']>(fields!, row, joinsNotNullableMap));
+					: rows.map((row) =>
+							mapResultRow<T["execute"]>(
+								fields!,
+								row,
+								joinsNotNullableMap
+							)
+					  );
 			});
 		});
 	}
 
-	all(placeholderValues: Record<string, unknown> | undefined = {}): Promise<T['all']> {
-		return tracer.startActiveSpan('drizzle.execute', async (span) => {
+	all(
+		placeholderValues: Record<string, unknown> | undefined = {}
+	): Promise<T["all"]> {
+		return tracer.startActiveSpan("drizzle.execute", async (span) => {
 			const params = fillPlaceholders(this.params, placeholderValues);
 			span?.setAttributes({
-				'drizzle.query.text': this.queryString,
-				'drizzle.query.params': JSON.stringify(params),
+				"drizzle.query.text": this.queryString,
+				"drizzle.query.params": JSON.stringify(params),
 			});
 			this.logger.logQuery(this.queryString, params);
-			return tracer.startActiveSpan('drizzle.driver.execute', () => {
+			return tracer.startActiveSpan("drizzle.driver.execute", () => {
 				span?.setAttributes({
-					'drizzle.query.text': this.queryString,
-					'drizzle.query.params': JSON.stringify(params),
+					"drizzle.query.text": this.queryString,
+					"drizzle.query.params": JSON.stringify(params),
 				});
 				return this.client.unsafe(this.queryString, params as any[]);
 			});
@@ -89,7 +119,7 @@ export class PostgresJsSession<
 	TFullSchema extends Record<string, unknown>,
 	TSchema extends TablesRelationalConfig,
 > extends PgSession<PostgresJsQueryResultHKT, TFullSchema, TSchema> {
-	static readonly [entityKind]: string = 'PostgresJsSession';
+	static readonly [entityKind]: string = "PostgresJsSession";
 
 	logger: Logger;
 
@@ -98,7 +128,7 @@ export class PostgresJsSession<
 		dialect: PgDialect,
 		private schema: RelationalSchemaConfig<TSchema> | undefined,
 		/** @internal */
-		readonly options: PostgresJsSessionOptions = {},
+		readonly options: PostgresJsSessionOptions = {}
 	) {
 		super(dialect);
 		this.logger = options.logger ?? new NoopLogger();
@@ -108,9 +138,16 @@ export class PostgresJsSession<
 		query: Query,
 		fields: SelectedFieldsOrdered | undefined,
 		name: string | undefined,
-		customResultMapper?: (rows: unknown[][]) => T['execute'],
+		customResultMapper?: (rows: unknown[][]) => T["execute"]
 	): PgPreparedQuery<T> {
-		return new PostgresJsPreparedQuery(this.client, query.sql, query.params, this.logger, fields, customResultMapper);
+		return new PostgresJsPreparedQuery(
+			this.client,
+			query.sql,
+			query.params,
+			this.logger,
+			fields,
+			customResultMapper
+		);
 	}
 
 	query(query: string, params: unknown[]): Promise<RowList<Row[]>> {
@@ -120,28 +157,64 @@ export class PostgresJsSession<
 
 	queryObjects<T extends Row>(
 		query: string,
-		params: unknown[],
+		params: unknown[]
 	): Promise<RowList<T[]>> {
 		return this.client.unsafe(query, params as any[]);
 	}
 
 	override transaction<T>(
-		transaction: (tx: PostgresJsTransaction<TFullSchema, TSchema>) => Promise<T>,
-		config?: PgTransactionConfig,
+		transaction: (
+			tx: PostgresJsTransaction<TFullSchema, TSchema>
+		) => Promise<T>,
+		config?: PgTransactionConfig
 	): Promise<T> {
 		return this.client.begin(async (client) => {
-			const session = new PostgresJsSession<TransactionSql, TFullSchema, TSchema>(
-				client,
+			const session = new PostgresJsSession<
+				TransactionSql,
+				TFullSchema,
+				TSchema
+			>(client, this.dialect, this.schema, this.options);
+			const tx = new PostgresJsTransaction(
 				this.dialect,
-				this.schema,
-				this.options,
+				session,
+				this.schema
 			);
-			const tx = new PostgresJsTransaction(this.dialect, session, this.schema);
 			if (config) {
 				await tx.setTransaction(config);
 			}
-			return transaction(tx);
+			console.log("Hello world #1");
+			const result = transaction(tx);
+			console.log("Hello world #2");
+			return result;
 		}) as Promise<T>;
+	}
+
+	override startTransaction(config?: PgTransactionConfig): Promise<void> {
+		// const session = new PostgresJsSession<
+		// 	TransactionSql,
+		// 	TFullSchema,
+		// 	TSchema
+		// >(this.client, this.dialect, this.schema, this.options);
+		// const tx = new PostgresJsTransaction(
+		// 	this.dialect,
+		// 	session,
+		// 	this.schema
+		// );
+		// if (config) {
+		// 	await tx.setTransaction(config);
+		// }
+		return new Promise(async (resolve, rejects) => {
+			await this.client`BEGIN`;
+			resolve();
+		});
+	}
+
+	override endTransaction(rollback: boolean): Promise<void> {
+		if (rollback) {
+			return this.client`ROLLBACK`.then(() => {});
+			// return transaction.rollback() as Promise<void>;
+		}
+		return this.client`COMMIT`.then(() => {});
 	}
 }
 
@@ -149,29 +222,44 @@ export class PostgresJsTransaction<
 	TFullSchema extends Record<string, unknown>,
 	TSchema extends TablesRelationalConfig,
 > extends PgTransaction<PostgresJsQueryResultHKT, TFullSchema, TSchema> {
-	static readonly [entityKind]: string = 'PostgresJsTransaction';
+	static readonly [entityKind]: string = "PostgresJsTransaction";
 
 	constructor(
 		dialect: PgDialect,
 		/** @internal */
-		override readonly session: PostgresJsSession<TransactionSql, TFullSchema, TSchema>,
+		override readonly session: PostgresJsSession<
+			TransactionSql,
+			TFullSchema,
+			TSchema
+		>,
 		schema: RelationalSchemaConfig<TSchema> | undefined,
-		nestedIndex = 0,
+		nestedIndex = 0
 	) {
 		super(dialect, session, schema, nestedIndex);
 	}
 
 	override transaction<T>(
-		transaction: (tx: PostgresJsTransaction<TFullSchema, TSchema>) => Promise<T>,
+		transaction: (
+			tx: PostgresJsTransaction<TFullSchema, TSchema>
+		) => Promise<T>
 	): Promise<T> {
 		return this.session.client.savepoint((client) => {
-			const session = new PostgresJsSession(client, this.dialect, this.schema, this.session.options);
-			const tx = new PostgresJsTransaction(this.dialect, session, this.schema);
+			const session = new PostgresJsSession(
+				client,
+				this.dialect,
+				this.schema,
+				this.session.options
+			);
+			const tx = new PostgresJsTransaction(
+				this.dialect,
+				session,
+				this.schema
+			);
 			return transaction(tx);
 		}) as Promise<T>;
 	}
 }
 
 export interface PostgresJsQueryResultHKT extends QueryResultHKT {
-	type: RowList<Assume<this['row'], Row>[]>;
+	type: RowList<Assume<this["row"], Row>[]>;
 }

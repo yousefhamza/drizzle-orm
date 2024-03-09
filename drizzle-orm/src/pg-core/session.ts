@@ -1,12 +1,12 @@
-import { entityKind } from '~/entity.ts';
-import { TransactionRollbackError } from '~/errors.ts';
-import type { TablesRelationalConfig } from '~/relations.ts';
-import type { PreparedQuery } from '~/session.ts';
-import { type Query, type SQL, sql } from '~/sql/index.ts';
-import { tracer } from '~/tracing.ts';
-import { PgDatabase } from './db.ts';
-import type { PgDialect } from './dialect.ts';
-import type { SelectedFieldsOrdered } from './query-builders/select.types.ts';
+import { entityKind } from "~/entity.ts";
+import { TransactionRollbackError } from "~/errors.ts";
+import type { TablesRelationalConfig } from "~/relations.ts";
+import type { PreparedQuery } from "~/session.ts";
+import { type Query, type SQL, sql } from "~/sql/index.ts";
+import { tracer } from "~/tracing.ts";
+import { PgDatabase } from "./db.ts";
+import type { PgDialect } from "./dialect.ts";
+import type { SelectedFieldsOrdered } from "./query-builders/select.types.ts";
 
 export interface PreparedQueryConfig {
 	execute: unknown;
@@ -14,7 +14,9 @@ export interface PreparedQueryConfig {
 	values: unknown;
 }
 
-export abstract class PgPreparedQuery<T extends PreparedQueryConfig> implements PreparedQuery {
+export abstract class PgPreparedQuery<T extends PreparedQueryConfig>
+	implements PreparedQuery
+{
 	constructor(protected query: Query) {}
 
 	getQuery(): Query {
@@ -25,20 +27,28 @@ export abstract class PgPreparedQuery<T extends PreparedQueryConfig> implements 
 		return response;
 	}
 
-	static readonly [entityKind]: string = 'PgPreparedQuery';
+	static readonly [entityKind]: string = "PgPreparedQuery";
 
 	/** @internal */
 	joinsNotNullableMap?: Record<string, boolean>;
 
-	abstract execute(placeholderValues?: Record<string, unknown>): Promise<T['execute']>;
+	abstract execute(
+		placeholderValues?: Record<string, unknown>
+	): Promise<T["execute"]>;
 
 	/** @internal */
-	abstract all(placeholderValues?: Record<string, unknown>): Promise<T['all']>;
+	abstract all(
+		placeholderValues?: Record<string, unknown>
+	): Promise<T["all"]>;
 }
 
 export interface PgTransactionConfig {
-	isolationLevel?: 'read uncommitted' | 'read committed' | 'repeatable read' | 'serializable';
-	accessMode?: 'read only' | 'read write';
+	isolationLevel?:
+		| "read uncommitted"
+		| "read committed"
+		| "repeatable read"
+		| "serializable";
+	accessMode?: "read only" | "read write";
 	deferrable?: boolean;
 }
 
@@ -47,7 +57,7 @@ export abstract class PgSession<
 	TFullSchema extends Record<string, unknown> = Record<string, never>,
 	TSchema extends TablesRelationalConfig = Record<string, never>,
 > {
-	static readonly [entityKind]: string = 'PgSession';
+	static readonly [entityKind]: string = "PgSession";
 
 	constructor(protected dialect: PgDialect) {}
 
@@ -55,18 +65,22 @@ export abstract class PgSession<
 		query: Query,
 		fields: SelectedFieldsOrdered | undefined,
 		name: string | undefined,
-		customResultMapper?: (rows: unknown[][], mapColumnValue?: (value: unknown) => unknown) => T['execute'],
+		customResultMapper?: (
+			rows: unknown[][],
+			mapColumnValue?: (value: unknown) => unknown
+		) => T["execute"]
 	): PgPreparedQuery<T>;
 
 	execute<T>(query: SQL): Promise<T> {
-		return tracer.startActiveSpan('drizzle.operation', () => {
-			const prepared = tracer.startActiveSpan('drizzle.prepareQuery', () => {
-				return this.prepareQuery<PreparedQueryConfig & { execute: T }>(
-					this.dialect.sqlToQuery(query),
-					undefined,
-					undefined,
-				);
-			});
+		return tracer.startActiveSpan("drizzle.operation", () => {
+			const prepared = tracer.startActiveSpan(
+				"drizzle.prepareQuery",
+				() => {
+					return this.prepareQuery<
+						PreparedQueryConfig & { execute: T }
+					>(this.dialect.sqlToQuery(query), undefined, undefined);
+				}
+			);
 
 			return prepared.execute();
 		});
@@ -76,14 +90,20 @@ export abstract class PgSession<
 		return this.prepareQuery<PreparedQueryConfig & { all: T[] }>(
 			this.dialect.sqlToQuery(query),
 			undefined,
-			undefined,
+			undefined
 		).all();
 	}
 
 	abstract transaction<T>(
-		transaction: (tx: PgTransaction<TQueryResult, TFullSchema, TSchema>) => Promise<T>,
-		config?: PgTransactionConfig,
+		transaction: (
+			tx: PgTransaction<TQueryResult, TFullSchema, TSchema>
+		) => Promise<T>,
+		config?: PgTransactionConfig
 	): Promise<T>;
+
+	abstract startTransaction(config?: PgTransactionConfig): Promise<void>;
+
+	abstract endTransaction(rollback: boolean): Promise<void>;
 }
 
 export abstract class PgTransaction<
@@ -91,17 +111,19 @@ export abstract class PgTransaction<
 	TFullSchema extends Record<string, unknown> = Record<string, never>,
 	TSchema extends TablesRelationalConfig = Record<string, never>,
 > extends PgDatabase<TQueryResult, TFullSchema, TSchema> {
-	static readonly [entityKind]: string = 'PgTransaction';
+	static readonly [entityKind]: string = "PgTransaction";
 
 	constructor(
 		dialect: PgDialect,
 		session: PgSession<any, any, any>,
-		protected schema: {
-			fullSchema: Record<string, unknown>;
-			schema: TSchema;
-			tableNamesMap: Record<string, string>;
-		} | undefined,
-		protected readonly nestedIndex = 0,
+		protected schema:
+			| {
+					fullSchema: Record<string, unknown>;
+					schema: TSchema;
+					tableNamesMap: Record<string, string>;
+			  }
+			| undefined,
+		protected readonly nestedIndex = 0
 	) {
 		super(dialect, session, schema);
 	}
@@ -119,27 +141,31 @@ export abstract class PgTransaction<
 		if (config.accessMode) {
 			chunks.push(config.accessMode);
 		}
-		if (typeof config.deferrable === 'boolean') {
-			chunks.push(config.deferrable ? 'deferrable' : 'not deferrable');
+		if (typeof config.deferrable === "boolean") {
+			chunks.push(config.deferrable ? "deferrable" : "not deferrable");
 		}
-		return sql.raw(chunks.join(' '));
+		return sql.raw(chunks.join(" "));
 	}
 
 	setTransaction(config: PgTransactionConfig): Promise<void> {
-		return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config)}`);
+		return this.session.execute(
+			sql`set transaction ${this.getTransactionConfigSQL(config)}`
+		);
 	}
 
 	abstract override transaction<T>(
-		transaction: (tx: PgTransaction<TQueryResult, TFullSchema, TSchema>) => Promise<T>,
+		transaction: (
+			tx: PgTransaction<TQueryResult, TFullSchema, TSchema>
+		) => Promise<T>
 	): Promise<T>;
 }
 
 export interface QueryResultHKT {
-	readonly $brand: 'QueryRowHKT';
+	readonly $brand: "QueryRowHKT";
 	readonly row: unknown;
 	readonly type: unknown;
 }
 
 export type QueryResultKind<TKind extends QueryResultHKT, TRow> = (TKind & {
 	readonly row: TRow;
-})['type'];
+})["type"];
